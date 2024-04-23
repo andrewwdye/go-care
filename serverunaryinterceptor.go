@@ -6,8 +6,13 @@ package care
 
 import (
 	"context"
+
 	"google.golang.org/grpc"
 )
+
+type ServerInterceptor interface {
+	Unary() grpc.UnaryServerInterceptor
+}
 
 type unaryServerInterceptor struct {
 	interceptor *interceptor
@@ -33,16 +38,20 @@ func (s *unaryServerInterceptor) Unary() grpc.UnaryServerInterceptor {
 	}
 }
 
-// NewServerUnaryInterceptor - makes a new unary server interceptor.
-// There will be panic if options is an empty pointer.
-func NewServerUnaryInterceptor(opts *Options) grpc.ServerOption {
+// NewServerInterceptor - makes a new server interceptor.
+// There will be panic if options is an empty pointer. Can be used alongside ChainUnaryServer.
+func NewServerInterceptor(opts *Options) ServerInterceptor {
 	if opts == nil {
 		panic("The options must not be provided as a nil-pointer.")
 	}
 
-	interceptor := unaryServerInterceptor{
+	return &unaryServerInterceptor{
 		interceptor: newInterceptor(opts),
 	}
+}
 
-	return grpc.UnaryInterceptor(interceptor.Unary())
+// NewServerUnaryInterceptor - makes a new unary server interceptor.
+// There will be panic if options is an empty pointer.
+func NewServerUnaryInterceptor(opts *Options) grpc.ServerOption {
+	return grpc.UnaryInterceptor(NewServerInterceptor(opts).Unary())
 }

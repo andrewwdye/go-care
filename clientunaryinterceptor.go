@@ -6,9 +6,14 @@ package care
 
 import (
 	"context"
-	"google.golang.org/grpc"
 	"reflect"
+
+	"google.golang.org/grpc"
 )
+
+type ClientInterceptor interface {
+	Unary() grpc.UnaryClientInterceptor
+}
 
 type unaryClientInterceptor struct {
 	interceptor *interceptor
@@ -49,16 +54,20 @@ func (s *unaryClientInterceptor) Unary() grpc.UnaryClientInterceptor {
 	}
 }
 
-// NewClientUnaryInterceptor makes a new unary client interceptor.
-// There will be panic if options is an empty pointer.
-func NewClientUnaryInterceptor(opts *Options) grpc.DialOption {
+// NewClientInterceptor makes a new client interceptor.
+// There will be panic if options is an empty pointer. Can be used alongside ChainUnaryClient.
+func NewClientInterceptor(opts *Options) ClientInterceptor {
 	if opts == nil {
 		panic("The options must not be provided as a nil-pointer.")
 	}
 
-	interceptor := unaryClientInterceptor{
+	return &unaryClientInterceptor{
 		interceptor: newInterceptor(opts),
 	}
+}
 
-	return grpc.WithUnaryInterceptor(interceptor.Unary())
+// NewClientUnaryInterceptor makes a new unary client interceptor.
+// There will be panic if options is an empty pointer.
+func NewClientUnaryInterceptor(opts *Options) grpc.DialOption {
+	return grpc.WithUnaryInterceptor(NewClientInterceptor(opts).Unary())
 }
